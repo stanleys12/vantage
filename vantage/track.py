@@ -9,6 +9,7 @@ from . import data as D
 
 LOG = DATA / "picks.jsonl"
 CARD = DATA / "scorecard.json"
+OUTCOMES = DATA / "outcomes.json"   # every scored pick; the scorecard keeps only the last 200
 HORIZONS = {"1w": 5, "1m": 21, "3m": 63}
 MIN_DATES = 20   # distinct pick-dates before any verdict; same-day picks are one correlated observation
 
@@ -80,9 +81,9 @@ def joined() -> list[dict]:
         return []
     rows = [json.loads(l) for l in LOG.read_text().splitlines() if l.strip()]
     det = {}
-    if CARD.exists():
+    if OUTCOMES.exists():
         try:
-            for r in json.loads(CARD.read_text()).get("detail", []):
+            for r in json.loads(OUTCOMES.read_text()):
                 det[(r["date"], r["ticker"])] = r
         except Exception:
             pass
@@ -169,6 +170,7 @@ def evaluate() -> dict:
                                "excess_pct": round((port - bench) * 100, 2)},
             "verdict": _verdict(summary), "detail": detail[-200:]}
     CARD.write_text(json.dumps(card, indent=1))
+    OUTCOMES.write_text(json.dumps(detail))
     return card
 
 

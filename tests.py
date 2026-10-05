@@ -122,9 +122,9 @@ def _():
 @t("track.evaluate: pick dated beyond the last price bar (pre-market run) does not crash")
 def _():
     import json as _j
-    tmp = Path(tempfile.mkdtemp()); oL, oC, oP = track.LOG, track.CARD, track.D.prices
+    tmp = Path(tempfile.mkdtemp()); oL, oC, oO, oP = track.LOG, track.CARD, track.OUTCOMES, track.D.prices
     try:
-        track.LOG, track.CARD = tmp / "p.jsonl", tmp / "c.json"
+        track.LOG, track.CARD, track.OUTCOMES = tmp / "p.jsonl", tmp / "c.json", tmp / "o.json"
         idx = pd.bdate_range("2026-08-01", "2026-09-28")            # last bar = 09-28
         px = pd.DataFrame({"AAA": np.linspace(10, 12, len(idx)), "SPY": np.linspace(500, 510, len(idx))}, idx)
         track.D.prices = lambda tickers, period="1y": px
@@ -135,7 +135,28 @@ def _():
         card = track.evaluate()                                        # must not raise IndexError
         assert card["n_picks"] == 3 and "1w" in card["by_horizon"] and card["by_horizon"]["1w"]["n"] == 1
     finally:
-        track.LOG, track.CARD, track.D.prices = oL, oC, oP
+        track.LOG, track.CARD, track.OUTCOMES, track.D.prices = oL, oC, oO, oP
+
+
+@t("track.joined: 1m outcomes of old picks survive past the scorecard's 200-row detail cap")
+def _():
+    tmp = Path(tempfile.mkdtemp()); oL, oC, oO, oP = track.LOG, track.CARD, track.OUTCOMES, track.D.prices
+    try:
+        track.LOG, track.CARD, track.OUTCOMES = tmp / "p.jsonl", tmp / "c.json", tmp / "o.json"
+        idx = pd.bdate_range("2026-06-01", "2026-09-28")
+        names = [f"T{i}" for i in range(18)]
+        px = pd.DataFrame({**{n: np.linspace(10, 12, len(idx)) for n in names}, "SPY": np.linspace(500, 510, len(idx))}, idx)
+        track.D.prices = lambda tickers, period="1y": px
+        rows = [{"date": d.date().isoformat(), "ticker": n, "rank": i + 1, "conviction": 70, "price": 10.0, "spy": 500.0,
+                 "driver": "momentum", "p_beat_spy": 55} for d in idx[:-1] for i, n in enumerate(names)]
+        track.LOG.write_text("\n".join(json.dumps(r) for r in rows) + "\n")
+        card = track.evaluate()
+        assert len(card["detail"]) == 200
+        j = track.joined()
+        assert len(j) == len(rows)
+        assert sum("1m" in r for r in j) == card["by_horizon"]["1m"]["n"] > 1000
+    finally:
+        track.LOG, track.CARD, track.OUTCOMES, track.D.prices = oL, oC, oO, oP
 
 
 @t("cluster t: one observation per date; tail share flags outlier-driven means")
