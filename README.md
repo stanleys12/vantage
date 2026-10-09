@@ -84,7 +84,18 @@ Outputs: `reports/YYYY-MM-DD.md` + `.json` (and `latest.*`), `data/picks.jsonl` 
 `data/scorecard.json`, `reports/run.log`.
 
 Scheduled (launchd, `launchd/`): weekdays **6:20am PT** (pre-open brief with overnight news) and
-**1:20pm PT** (post-close refresh). Dashboard runs as a keep-alive agent.
+**1:20pm PT** (post-close refresh). Dashboard runs as a keep-alive agent. The plists hardcode the
+author's paths (launchd does not expand `~` or variables), so rewrite them for your checkout when
+installing:
+
+```bash
+cd ~/vantage
+for p in launchd/*.plist; do
+  sed -e "s#/Users/stanleyshen/vantage#$PWD#g" -e "s#/Users/stanleyshen#$HOME#g" "$p" \
+    > ~/Library/LaunchAgents/"${p:t}"
+  launchctl load ~/Library/LaunchAgents/"${p:t}"
+done
+```
 
 The reasoning layer uses the Claude Code CLI headlessly (`claude -p`, no tools). One full run costs
 roughly **$1.5–2 on your CLI default model** (~$35–45/month at one full run per weekday); set
