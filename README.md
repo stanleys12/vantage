@@ -74,6 +74,7 @@ The desk uses fresh data to *describe* the world accurately, not to front-run it
 
 ```bash
 cd ~/vantage
+python3 -m venv .venv && ./.venv/bin/pip install -r requirements.txt   # once
 ./.venv/bin/python run_daily.py            # full run: ~3-6 min (gurus + LLM reasoning)
 ./.venv/bin/python run_daily.py --fast     # ~30s: no LLM, no 13F (smoke test / rule-based brief)
 ./.venv/bin/python app.py                  # dashboard → http://127.0.0.1:8866
@@ -86,10 +87,12 @@ Outputs: `reports/YYYY-MM-DD.md` + `.json` (and `latest.*`), `data/picks.jsonl` 
 Scheduled (launchd, `launchd/`): weekdays **6:20am PT** (pre-open brief with overnight news) and
 **1:20pm PT** (post-close refresh). Dashboard runs as a keep-alive agent. The plists hardcode the
 author's paths (launchd does not expand `~` or variables), so rewrite them for your checkout when
-installing:
+installing. launchd will not start a job whose log directory is missing, and `reports/` is not in the
+repo, so create it first:
 
 ```bash
 cd ~/vantage
+mkdir -p reports
 for p in launchd/*.plist; do
   sed -e "s#/Users/stanleyshen/vantage#$PWD#g" -e "s#/Users/stanleyshen#$HOME#g" "$p" \
     > ~/Library/LaunchAgents/"${p:t}"
