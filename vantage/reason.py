@@ -25,7 +25,15 @@ def claude_bin() -> str | None:
     hits = sorted(glob.glob(os.path.expanduser("~/.vscode/extensions/anthropic.claude-code-*/resources/native-binary/claude")))
     if hits:
         return hits[-1]
-    return shutil.which("claude")
+    found = shutil.which("claude")
+    if found:
+        return found
+    # launchd's minimal PATH misses the native installer and Apple Silicon Homebrew locations
+    for cand in ("~/.local/bin/claude", "/opt/homebrew/bin/claude"):
+        cand = os.path.expanduser(cand)
+        if os.access(cand, os.X_OK):
+            return cand
+    return None
 
 
 def _extract_json(text: str) -> dict | None:

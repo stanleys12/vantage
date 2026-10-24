@@ -103,6 +103,24 @@ def _():
     assert out["source"] == "rule-based" and out["picks"]["T"]["verdict"] == "Buy"
 
 
+@t("reason.claude_bin: finds ~/.local/bin/claude when launchd's PATH does not include it")
+def _():
+    import os
+    home = Path(tempfile.mkdtemp()); binp = home / ".local" / "bin" / "claude"
+    binp.parent.mkdir(parents=True); binp.write_text("#!/bin/sh\n"); binp.chmod(0o755)
+    saved = {k: os.environ.get(k) for k in ("HOME", "PATH", "VANTAGE_CLAUDE_BIN")}
+    os.environ.pop("VANTAGE_CLAUDE_BIN", None)
+    os.environ["HOME"] = str(home); os.environ["PATH"] = "/usr/bin:/bin:/usr/sbin:/sbin"
+    try:
+        assert reason.claude_bin() == str(binp)
+    finally:
+        for k, v in saved.items():
+            if v is None:
+                os.environ.pop(k, None)
+            else:
+                os.environ[k] = v
+
+
 @t("track: record dedupes same-day ticker; verdict thresholds")
 def _():
     tmp = Path(tempfile.mkdtemp()); orig = track.LOG; track.LOG = tmp / "p.jsonl"
